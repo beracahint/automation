@@ -1,0 +1,114 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+Description: >
+  Template to create ECS cluster
+
+Parameters:
+  InstanceType:
+    Type: String
+    Default: t2.micro
+
+  BuildEnvironment:
+    Type: String
+    Default: dev
+
+  ClusterSize:
+    Type: Number
+    Default: 1
+
+  Subnets:
+    Type: List<AWS::EC2::Subnet::Id>
+
+  SSHAccessSG:
+    Description: 'SG for SSH access for admin purposes'
+    Type: AWS::EC2::SecurityGroup::Id
+
+  DBAccessSG:
+    Description: 'SG for DB access'
+    Type: AWS::EC2::SecurityGroup::Id
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+
+  SshKey:
+    Type: String
+
+  SourceSecurityGroup:
+    Description: 'Security group assigned to load balancer'
+    Type: AWS::EC2::SecurityGroup::Id
+
+  AMI:
+    Description: 'AMI ID to be used by the container, usually the latest from here: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-optimized_AMI.html'
+    Type: String
+
+Resources:
+  ECSRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
+
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+        - !Ref ECSRole
+
+  Cluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Ref AWS::StackName
+
+  SecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: !Sub ${AWS::StackName}-hosts
+      SecurityGroupIngress:
+        - SourceSecurityGroupId: !Ref SourceSecurityGroup
+          IpProtocol: -1
+      VpcId: !Ref VpcId
+
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier: !Ref Subnets
+      LaunchConfigurationName: !Ref LaunchConfiguration
+      MinSize: !Ref ClusterSize
+      MaxSize: !Ref ClusterSize
+      DesiredCapacity: !Ref ClusterSize
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName} - ECS Host
+          PropagateAtLaunch: true
+        - Key: BuildEnvironment
+          Value: !Ref BuildEnvironment
+          PropagateAtLaunch: true
+
+  LaunchConfiguration:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      ImageId: !Ref AMI
+      InstanceType: !Ref InstanceType
+      IamInstanceProfile: !Ref InstanceProfile
+      KeyName: beraca-prod-uswest2
+      SecurityGroups:
+        - !Ref SecurityGroup
+        - !Ref SSHAccessSG
+        - !Ref DBAccessSG
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          echo ECS_CLUSTER=${Cluster} >> /etc/ecs/ecs.config;
+          echo ECS_BACKEND_HOST= >> /etc/ecs/ecs.config;
+
+Outputs:
+  ClusterName:
+      Value: !Ref Cluster

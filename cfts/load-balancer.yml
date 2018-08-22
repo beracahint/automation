@@ -1,0 +1,355 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+Description: >
+  Template to create application load balancer for
+  web apps
+
+Parameters:
+  Subnets:
+    Type: List<AWS::EC2::Subnet::Id>
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+
+  CertificateArn:
+    Type: String
+    Default: 'arn:aws:acm:us-west-2:835670608154:certificate/e09af58e-7305-4132-ac66-e161c1e947fd'
+
+  BuildEnvironment:
+    Type: String
+    Default: dev
+
+Resources:
+  SecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: !Sub ${AWS::StackName}-alb
+      SecurityGroupIngress:
+        - CidrIp: "0.0.0.0/0"
+          IpProtocol: "TCP"
+          FromPort: 80
+          ToPort: 80
+        - CidrIp: "0.0.0.0/0"
+          IpProtocol: "TCP"
+          FromPort: 443
+          ToPort: 443
+      VpcId: !Ref VpcId
+
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Subnets: !Ref Subnets
+      SecurityGroups:
+        - !Ref SecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}
+
+  LoadBalancerListenerHttp:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroupMagentoProd
+
+  LoadBalancerListenerHttps:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: !Ref CertificateArn
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroupMagentoProd
+
+  ############## MAGENTO ########
+
+  # Listener rules
+  #*******************************
+
+  # Magento Prod HTTP rules
+  ListenerRuleHttpMagentoProd1:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref LoadBalancerListenerHttp
+      Priority: 1
+      Conditions:
+        - Field: host-header
+          Values:
+            - www.emedic360.mx
+      Actions:
+        - TargetGroupArn: !Ref TargetGroupMagentoProd
+          Type: forward
+
+  ListenerRuleHttpMagentoProd2:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref LoadBalancerListenerHttp
+      Priority: 2
+      Conditions:
+        - Field: host-header
+          Values:
+            - emedic360.mx
+      Actions:
+        - TargetGroupArn: !Ref TargetGroupMagentoProd
+          Type: forward
+
+  ListenerRuleHttpMagentoProd3:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref LoadBalancerListenerHttp
+      Priority: 8
+      Conditions:
+        - Field: host-header
+          Values:
+            - prod.emedic360.mx
+      Actions:
+        - TargetGroupArn: !Ref TargetGroupMagentoProd
+          Type: forward
+
+  # Magento Prod HTTPS rules
+  ListenerRuleHttpsMagentoProd1:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref LoadBalancerListenerHttps
+      Priority: 1
+      Conditions:
+        - Field: host-header
+          Values:
+            - www.emedic360.mx
+      Actions:
+        - TargetGroupArn: !Ref TargetGroupMagentoProd
+          Type: forward
+
+  ListenerRuleHttpsMagentoProd2:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref LoadBalancerListenerHttps
+      Priority: 2
+      Conditions:
+        - Field: host-header
+          Values:
+            - emedic360.mx
+      Actions:
+        - TargetGroupArn: !Ref TargetGroupMagentoProd
+          Type: forward
+
+    # Magento Prod HTTP rules
+
+  ListenerRuleHttpsMagentoProd3:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref LoadBalancerListenerHttps
+      Priority: 8
+      Conditions:
+        - Field: host-header
+          Values:
+            - prod.emedic360.mx
+      Actions:
+        - TargetGroupArn: !Ref TargetGroupMagentoProd
+          Type: forward
+
+      # Magento Prod HTTP rules
+
+  ListenerRuleHttpMagentoDev:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref LoadBalancerListenerHttp
+      Priority: 5
+      Conditions:
+        - Field: host-header
+          Values:
+            - magento-dev.emedic360.mx
+      Actions:
+        - TargetGroupArn: !Ref TargetGroupMagentoDev
+          Type: forward
+
+
+  # Magento dev HTTPS rules
+  ListenerRuleHttpsMagentoDev:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref LoadBalancerListenerHttps
+      Priority: 6
+      Conditions:
+        - Field: host-header
+          Values:
+            - magento-dev.emedic360.mx
+      Actions:
+        - TargetGroupArn: !Ref TargetGroupMagentoDev
+          Type: forward
+
+  ListenerRuleHttpsMagentoProd2:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref LoadBalancerListenerHttps
+      Priority: 2
+      Conditions:
+        - Field: host-header
+          Values:
+            - emedic360.mx
+      Actions:
+        - TargetGroupArn: !Ref TargetGroupMagentoProd
+          Type: forward
+
+  # Magento Target groups
+  #*******************************
+
+  # Magento Target Group Prod
+  TargetGroupMagentoProd:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    DependsOn: LoadBalancer
+    Properties:
+      VpcId: !Ref VpcId
+      Port: 80
+      Protocol: HTTP
+      Matcher:
+        HttpCode: 200-299
+      HealthCheckIntervalSeconds: 10
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: 30
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-Magento-prod
+
+
+  # Magento Target Group Dev
+  TargetGroupMagentoDev:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    DependsOn: LoadBalancer
+    Properties:
+      VpcId: !Ref VpcId
+      Port: 80
+      Protocol: HTTP
+      Matcher:
+        HttpCode: 200-299
+      HealthCheckIntervalSeconds: 10
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: 30
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-Magento-dev
+
+
+  ############## SPP ###########
+
+  # Listener rules
+
+  ListenerRuleHttpSPProd:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref LoadBalancerListenerHttp
+      Priority: 3
+      Conditions:
+        - Field: host-header
+          Values:
+            - sp.emedic360.mx
+      Actions:
+        - TargetGroupArn: !Ref TargetGroupSPProd
+          Type: forward
+
+
+  ListenerRuleHttpsSPProd:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref LoadBalancerListenerHttps
+      Priority: 3
+      Conditions:
+        - Field: host-header
+          Values:
+            - sp.emedic360.mx
+      Actions:
+        - TargetGroupArn: !Ref TargetGroupSPProd
+          Type: forward
+
+  ListenerRuleHttpSPDev:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref LoadBalancerListenerHttp
+      Priority: 4
+      Conditions:
+        - Field: host-header
+          Values:
+            - sp-dev.emedic360.mx
+      Actions:
+        - TargetGroupArn: !Ref TargetGroupSPDev
+          Type: forward
+
+  ListenerRuleHttpsSPDev:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref LoadBalancerListenerHttps
+      Priority: 4
+      Conditions:
+        - Field: host-header
+          Values:
+            - sp-dev.emedic360.mx
+      Actions:
+        - TargetGroupArn: !Ref TargetGroupSPDev
+          Type: forward
+
+  TargetGroupSPProd:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    DependsOn: LoadBalancer
+    Properties:
+      VpcId: !Ref VpcId
+      Port: 80
+      Protocol: HTTP
+      Matcher:
+        HttpCode: 200-299
+      HealthCheckIntervalSeconds: 10
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: 30
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-SPP-prod
+
+  TargetGroupSPDev:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    DependsOn: LoadBalancer
+    Properties:
+      VpcId: !Ref VpcId
+      Port: 80
+      Protocol: HTTP
+      Matcher:
+        HttpCode: 200-299
+      HealthCheckIntervalSeconds: 10
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: 30
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-SPP-dev
+Outputs:
+  TargetGroupMagentoProd:
+    Value: !Ref TargetGroupMagentoProd
+  TargetGroupMagentoDev:
+    Value: !Ref TargetGroupMagentoDev
+  TargetGroupSPProd:
+    Value: !Ref TargetGroupSPProd
+  TargetGroupSPDev:
+    Value: !Ref TargetGroupSPDev

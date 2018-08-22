@@ -1,0 +1,83 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  Cluster:
+    Type: String
+
+  DesiredCount:
+    Type: Number
+    Default: 1
+
+  TargetGroup:
+    Type: String
+
+  BuildEnvironment:
+    Type: String
+
+  DockerImage:
+    Type: String
+
+  ServiceEC2HostPort:
+    Type: Number
+
+  MemoryReservationSoft:
+    Type: Number
+    Default: 400
+
+Resources:
+  TaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /ecs/${AWS::StackName}
+
+  EC2Service:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref Cluster
+      DesiredCount: !Ref DesiredCount
+      TaskDefinition: !Ref TaskDefinition
+      LoadBalancers:
+        - ContainerName: !Sub magento-${BuildEnvironment}
+          ContainerPort: 80
+          TargetGroupArn: !Ref TargetGroup
+
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub ${AWS::StackName}-magento-${BuildEnvironment}
+      RequiresCompatibilities:
+        - EC2
+      ExecutionRoleArn: !Ref TaskExecutionRole
+      ContainerDefinitions:
+        - Name: !Sub magento-${BuildEnvironment}
+          Image: !Ref DockerImage
+          Essential: true
+          MemoryReservation: !Ref MemoryReservationSoft
+          PortMappings:
+            - ContainerPort: 80
+              HostPort: !Ref ServiceEC2HostPort
+              Protocol: tcp
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-region: !Ref AWS::Region
+              awslogs-group: !Ref LogGroup
+              awslogs-stream-prefix: !Ref AWS::StackName
+Outputs:
+  Service:
+    Value: !Ref EC2Service
