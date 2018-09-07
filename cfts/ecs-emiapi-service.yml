@@ -25,6 +25,24 @@ Parameters:
     Type: Number
     Default: 400
 
+  TacticaDBHost:
+    Type: String
+
+  TacticaDBUser:
+    Type: String
+    Default: 'tactica'
+
+  TacticaDBPassword:
+    Type: String
+    NoEcho: true
+
+  TacticaDBName:
+    Type: String
+    Default: emedic360_tactica
+
+  TacticaDBPort:
+    Type: String
+    Default: '3306'
   # CFT does not support this yet
   # ServiceDiscoveryArn:
   #   Type: String
@@ -42,6 +60,13 @@ Resources:
             Effect: Allow
             Principal:
               Service: ecs-tasks.amazonaws.com
+      Policies:
+        - PolicyName: 'emiapi-s3access'
+          PolicyDocument:
+            Statement:
+              - Action: 's3:*'
+                Effect: 'Allow'
+                Resource: '*'
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
 
@@ -56,30 +81,45 @@ Resources:
       Cluster: !Ref Cluster
       DesiredCount: !Ref DesiredCount
       TaskDefinition: !Ref TaskDefinition
-      
+
       # CFT does not support this yet (Sep 4 2018)
       # ServiceRegistries:
       #   - RegistryArn: !Ref ServiceDiscoveryArn
       #     ContainerPort: 80
-      #     ContainerName: !Sub magento-${BuildEnvironment}
+      #     ContainerName: !Sub emiappi-${BuildEnvironment}
 
       LoadBalancers:
-        - ContainerName: !Sub magento-${BuildEnvironment}
+        - ContainerName: !Sub emiappi-${BuildEnvironment}
           ContainerPort: 80
           TargetGroupArn: !Ref TargetGroup
 
   TaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
-      Family: !Sub ${AWS::StackName}-magento-${BuildEnvironment}
+      Family: !Sub ${AWS::StackName}-emiappi-${BuildEnvironment}
       RequiresCompatibilities:
         - EC2
-      ExecutionRoleArn: !Ref TaskExecutionRole
+      TaskRoleArn: !Ref TaskExecutionRole
       ContainerDefinitions:
-        - Name: !Sub magento-${BuildEnvironment}
+        - Name: !Sub emiappi-${BuildEnvironment}
           Image: !Ref DockerImage
           Essential: true
           MemoryReservation: !Ref MemoryReservationSoft
+          Environment:
+            - Name: NODE_ENV
+              Value: !Ref BuildEnvironment
+            - Name: PORT
+              Value: 80
+            - Name: TACTICA_DB_HOST
+              Value: !Ref TacticaDBHost
+            - Name: TACTICA_DB_USER
+              Value: !Ref TacticaDBUser
+            - Name: TACTICA_DB_PASSWORD
+              Value: !Ref TacticaDBPassword
+            - Name: TACTICA_DB_NAME
+              Value: !Ref TacticaDBName
+            - Name: TACTICA_DB_PORT
+              Value: !Ref TacticaDBPort
           PortMappings:
             - ContainerPort: 80
               HostPort: !Ref ServiceEC2HostPort
@@ -90,6 +130,7 @@ Resources:
               awslogs-region: !Ref AWS::Region
               awslogs-group: !Ref LogGroup
               awslogs-stream-prefix: !Ref AWS::StackName
+
 Outputs:
   Service:
     Value: !Ref EC2Service
