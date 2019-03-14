@@ -112,6 +112,34 @@ Resources:
         - TargetGroupArn: !Ref TargetGroupMagentoProd
           Type: forward
 
+    #Beracah Medica
+
+    ListenerRuleHttpMagentoProd4:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref LoadBalancerListenerHttp
+      Priority: 3
+      Conditions:
+        - Field: host-header
+          Values:
+            - www.beracahmedica.mx
+      Actions:
+        - TargetGroupArn: !Ref TargetGroupMagentoProd
+          Type: forward
+
+  ListenerRuleHttpMagentoProd5:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref LoadBalancerListenerHttp
+      Priority: 4
+      Conditions:
+        - Field: host-header
+          Values:
+            - beracahmedica.mx
+      Actions:
+        - TargetGroupArn: !Ref TargetGroupMagentoProd
+          Type: forward
+
   # Magento Prod HTTPS rules
   ListenerRuleHttpsMagentoProd1:
     Type: AWS::ElasticLoadBalancingV2::ListenerRule
@@ -154,6 +182,34 @@ Resources:
         - TargetGroupArn: !Ref TargetGroupMagentoProd
           Type: forward
 
+     #Beracah Medica 
+
+    ListenerRuleHttpsMagentoProd4:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref LoadBalancerListenerHttps
+      Priority: 1
+      Conditions:
+        - Field: host-header
+          Values:
+            - www.beracahmedica.mx
+      Actions:
+        - TargetGroupArn: !Ref TargetGroupMagentoProd
+          Type: forward
+
+  ListenerRuleHttpsMagentoProd5:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref LoadBalancerListenerHttps
+      Priority: 2
+      Conditions:
+        - Field: host-header
+          Values:
+            - beracahmedica.mx
+      Actions:
+        - TargetGroupArn: !Ref TargetGroupMagentoProd
+          Type: forward
+
       # Magento Prod HTTP rules
 
   # Magneto Dev HTTP rule
@@ -184,6 +240,33 @@ Resources:
         - TargetGroupArn: !Ref TargetGroupMagentoDev
           Type: forward
 
+  # Magneto Bercah Dev HTTP rule
+  ListenerRuleHttpMagentoDev2:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref LoadBalancerListenerHttp
+      Priority: 7
+      Conditions:
+        - Field: host-header
+          Values:
+            - magento-dev.beracahmedica.mx
+      Actions:
+        - TargetGroupArn: !Ref TargetGroupMagentoDev
+          Type: forward
+
+  # Magento Bercah dev HTTPS rules
+  ListenerRuleHttpsMagentoDev2:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref LoadBalancerListenerHttps
+      Priority: 8
+      Conditions:
+        - Field: host-header
+          Values:
+            - magento-dev.beracahmedica.mx
+      Actions:
+        - TargetGroupArn: !Ref TargetGroupMagentoDev
+          Type: forward
   # ListenerRuleHttpsMagentoProd2:
   #   Type: AWS::ElasticLoadBalancingV2::ListenerRule
   #   Properties:
